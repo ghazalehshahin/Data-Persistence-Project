@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using System.IO;
 
 public class MainManager : MonoBehaviour
 {
@@ -18,6 +19,8 @@ public class MainManager : MonoBehaviour
     private int m_Points;
     
     private bool m_GameOver = false;
+    [SerializeField] int score = -1;
+    [SerializeField] string pName;
 
     // Start is called before the first frame update
     void Start()
@@ -36,8 +39,15 @@ public class MainManager : MonoBehaviour
                 brick.onDestroyed.AddListener(AddPoint);
             }
         }
-        DataManager.Instance.LoadNameAndScore();
-        userScore.text = "Best Score: " + DataManager.Instance.playerName + ":" + DataManager.Instance.score;
+        LoadNameAndScore();
+        if(score != -1)
+        {
+            userScore.text = "Best Score: " + pName + ":" + score;
+        }
+        else
+        {
+            userScore.text = "Best Score: " + DataManager.Instance.playerName + ":" + 0;
+        }
     }
 
     private void Update()
@@ -57,11 +67,6 @@ public class MainManager : MonoBehaviour
         }
         else if (m_GameOver)
         {
-            if (m_Points > DataManager.Instance.score)
-            {
-                //Debug.Log("higher");
-                DataManager.Instance.SaveNameAndScore();
-            }
             if (Input.GetKeyDown(KeyCode.Space))
             {
                 SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
@@ -77,7 +82,58 @@ public class MainManager : MonoBehaviour
 
     public void GameOver()
     {
+        SaveNameAndScore();
         m_GameOver = true;
         GameOverText.SetActive(true);
+    }
+
+    [System.Serializable]
+    class SaveData
+    {
+        public string playerName;
+        public int score;
+    }
+
+    public void SaveNameAndScore()
+    {
+        string path = Application.persistentDataPath + "/savefile.json";
+        if (score != -1)
+        {
+            if (m_Points > score)
+            {
+                File.Delete(path);
+                SaveData newData = new SaveData();
+                newData.playerName = DataManager.Instance.playerName;
+                newData.score = m_Points;
+
+                Debug.Log("in save method");
+                string jsonData = JsonUtility.ToJson(newData);
+                File.WriteAllText(Application.persistentDataPath + "/savefile.json", jsonData);
+            }
+        }
+
+        else
+        {
+            SaveData newData = new SaveData();
+            newData.playerName = DataManager.Instance.playerName;
+            newData.score = m_Points;
+
+            //Debug.Log("in save method");
+            string jsonData = JsonUtility.ToJson(newData);
+            File.WriteAllText(Application.persistentDataPath + "/savefile.json", jsonData);
+        }
+    }
+
+    public void LoadNameAndScore()
+    {
+        string path = Application.persistentDataPath + "/savefile.json";
+        if (File.Exists(path))
+        {
+            string json = File.ReadAllText(path);
+            SaveData data = JsonUtility.FromJson<SaveData>(json);
+
+            pName = data.playerName;
+            score = data.score;
+        }
     }
 }
